@@ -1,36 +1,77 @@
 # Rankmi::Audit
+- - - -
+Gema para manejar las auditorías internas de Rankmi desde las diferentes APIs de la empresa. Permite la configuración y 
+ejecución de request sobre la [API de auditoría](https://github.com/Rankmi/audit-api) de Rankmi.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/rankmi/audit`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
-
-## Installation
-
-Add this line to your application's Gemfile:
+## Modo de uso
+La gema fue pensada para poder generar auditorías rápidamente desde cualquier parte del código, con dos simples métodos:
 
 ```ruby
-gem 'rankmi-audit'
+# Para generar audits de acciones
+Rankmi::Audit.track_action(tenant: 'some-enterprise-token', audit_hash: { 
+    user_identifier: '',    # user.identifier desde la api de rankmi
+    action_type: '',        # Algún tipo de acción establecido en la api de rankmi
+    action_datetime: Time.zone.now,     # Fecha en que se produjo la acción (forma parte de un unique index, para evitar duplicaciones)
+    action_object: {  }  # Hash con información extra de la acción
+})
+
+# Para generar audits de cambios
+Rankmi::Audit.track_change(tenant: 'some-enterprise-token', audit_hash: {
+    user_identifier: '',    # user.identifier desde la api de rankmi
+    operator_user_identifier: '',   # user.identifier del usuario que realiza el cambio desde la api de rankmi
+    enterprise_process_token: '',   # enterprise_process.token desde la api de rankmi, si es que tiene un proceso asociado
+    survey_token: '',       # survey.token desde la api de rankmi, si es que tiene una encuesta asociada
+    change_type: '',        # Algún tipo de cambio establecido en la api de rankmi
+    change_datetime: Time.zone.now,  # Fecha en que se produjo el cambio (forma parte de un unique index, para evitar duplicaciones)
+    change_object: {  }  # Hash con información extra del cambio
+})
 ```
 
-And then execute:
+## Instalación y configuración
 
-    $ bundle install
+1. Agregar la gema al gemfile:
+```ruby
+gem 'rankmi-audit', git: "https://github.com/Rankmi/audit-gem"
+```
 
-Or install it yourself as:
+2. Instalar la gema con bundler:
+```shell script
+bundle install
+```
 
-    $ gem install rankmi-audit
+3. Configurar credenciales de la API de auditoría de rankmi en cada environment file:
+```ruby
+# Ejemplo: config/environments/development.rb
 
-## Usage
+Rankmi::Audit.configure do |config|
+  config.api_endpoint = 'http://localhost:8090'   # Audit endpoint donde se dispararán los requests
+  config.api_key = 'rankmiAuditTestKey'           # AUDIT_AUTH_KEY definida como variable de ambiente en la API de auditoría
+  config.api_secret = 'rankmiAuditTestSecret'     # AUDIT_AUTH_SECRET definido como variable de ambiente en la API de auditoría
+  config.fail_silently = true   # Si es true, la gema no hará ningún raise Error, y sólo devolverá un boolean o nil al ejecutar un método. 
+end 
+```
 
-TODO: Write usage instructions here
+4. Configurar los tenants permitidos en la gema, para que sólo se puedan crear audits para empresas registradas:
+```ruby
+# config/initializers/rankmi_audits.rb
+Rails.configuration.after_initialize do
+  Rankmi::Audit.configuration.allowed_tenants = Enterprise.all.pluck(:token)
+end
+```
 
-## Development
+5. Es posible modificar los tenants permitidos luego de inicializado el proyecto, por ejemplo cuando se crea una nueva empresa:
+```ruby
+class Enterprise < ApplicationRecord
+  after_create :initialize_dependencies
+  
+  private
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+  def initialize_dependencies
+    Rankmi::Audit.configuration.allowed_tenants << self.token
+  end
+end
+```
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+## Desarrollo
 
-## Contributing
-
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/rankmi-audit.
-
+Luego de obtener el repo, ejecutar `bin/setup` para instalar las dependencias. Luego, ejecutar `rake test` para correr los tests.
