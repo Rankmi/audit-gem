@@ -41,16 +41,13 @@ module Rankmi
         @errors << 'No api_key specified' if not defined?(@api_key) or @api_key.nil?
         @errors << 'No api_secret specified' if not defined?(@api_secret) or @api_secret.nil?
 
-        return @errors.count == 0
+        @errors.count.zero?
       end
 
       def error_messages
-        if @errors.count > 1
-          @errors = [errors[0]] + errors[1..-1].map(&:downcase) # fix case of all but first
-          errors.join(", ")
-        else
-          ''
-        end
+        return '' if @errors.count.zero? 
+        @errors = [errors[0]] + errors[1..-1].map(&:downcase) # fix case of all but first
+        errors.join(", ")
       end
 
     end
