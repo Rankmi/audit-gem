@@ -51,24 +51,13 @@ Rankmi::Audit.configure do |config|
 end 
 ```
 
-4. Configurar los tenants permitidos en la gema, para que sólo se puedan crear audits para empresas registradas:
+4. Configurar los tenants permitidos en la gema, para que sólo se puedan crear audits para empresas registradas, por ejemplo:
 ```ruby
 # config/initializers/rankmi_audits.rb
 Rails.configuration.after_initialize do
-  Rankmi::Audit.configuration.allowed_tenants = Enterprise.all.pluck(:token)
-end
-```
-
-5. Es posible modificar los tenants permitidos luego de inicializado el proyecto, por ejemplo cuando se crea una nueva empresa:
-```ruby
-class Enterprise < ApplicationRecord
-  after_create :initialize_dependencies
-  
-  private
-
-  def initialize_dependencies
-    Rankmi::Audit.configuration.allowed_tenants << self.token
-  end
+  Rankmi::Audit.configuration.allowed_tenants = -> {
+    Enterprise.all.pluck(:token)  # Mejor aún si se cachea el resultado de esta query, para evitar hacer muchas llamadas a la base de datos.
+  } 
 end
 ```
 

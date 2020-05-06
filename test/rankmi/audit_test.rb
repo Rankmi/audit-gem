@@ -18,7 +18,7 @@ class Rankmi::AuditTest < Minitest::Test
     assert_respond_to Rankmi::Audit, :track_action
     assert_respond_to Rankmi::Audit, :track_change
 
-    assert_empty Rankmi::Audit.configuration.allowed_tenants
+    assert_empty Rankmi::Audit.configuration.allowed_tenants.call
     assert Rankmi::Audit.configuration.fail_silently
   end
 
@@ -28,24 +28,24 @@ class Rankmi::AuditTest < Minitest::Test
       config.api_key = 'test_key'
       config.api_secret = 'test_secret'
       config.fail_silently = false
-      config.allowed_tenants = %w(foo bar)
+      config.allowed_tenants = -> { %w(foo bar) }
     end
 
     assert_equal 'http://localhost:8090', ::Rankmi::Audit.configuration.api_endpoint
     assert_equal 'test_key', ::Rankmi::Audit.configuration.api_key
     assert_equal 'test_secret', ::Rankmi::Audit.configuration.api_secret
-    refute_empty ::Rankmi::Audit::configuration.allowed_tenants
+    refute_empty ::Rankmi::Audit::configuration.allowed_tenants.call
     refute ::Rankmi::Audit.configuration.fail_silently
   end
 
   def test_that_it_allows_to_change_modify_tenants_after_setup_configuration
     ::Rankmi::Audit.configure do |config|
-      config.allowed_tenants = %w(foo bar)
+      config.allowed_tenants = -> { %w(foo bar) }
     end
-    assert_equal %w(foo bar), ::Rankmi::Audit::configuration.allowed_tenants
+    assert_equal %w(foo bar), ::Rankmi::Audit::configuration.allowed_tenants.call
 
-    ::Rankmi::Audit.configuration.allowed_tenants = %w(foo bar baz)
-    assert_equal %w(foo bar baz), ::Rankmi::Audit::configuration.allowed_tenants
+    ::Rankmi::Audit.configuration.allowed_tenants = -> { %w(foo bar baz) }
+    assert_equal %w(foo bar baz), ::Rankmi::Audit::configuration.allowed_tenants.call
   end
 
   def test_it_must_validate_configuration_attributes
@@ -105,14 +105,14 @@ class Rankmi::AuditTest < Minitest::Test
       config.api_key = 'some-api-key'
       config.api_secret = 'some-api-secret'
       config.fail_silently = false
-      config.allowed_tenants = ['some-valid-tenant']
+      config.allowed_tenants = -> { ['some-valid-tenant'] }
     end
     assert_raises Rankmi::Audit::InvalidTenant do
       ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-invalid-tenant')
     end
     assert ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-valid-tenant')
 
-    ::Rankmi::Audit.configuration.allowed_tenants = %w(foo bar)
+    ::Rankmi::Audit.configuration.allowed_tenants = -> { %w(foo bar) }
     assert ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'foo')
     assert_raises Rankmi::Audit::InvalidTenant do
       ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-valid-tenant')

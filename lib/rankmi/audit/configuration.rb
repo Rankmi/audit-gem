@@ -19,8 +19,8 @@ module Rankmi
       # True by default. It's recommended to set this attribute false for production environments.
       attr_accessor :fail_silently
 
-      # Array that store all allowed tenant values to send to the audit API.
-      # If a tenant it's not in this array, the audit will not been sent.
+      # A lambda that store a method to get an array with all allowed tenant values to send to the audit API.
+      # If a tenant it's not in this returned array, the audit will not been sent.
       attr_accessor :allowed_tenants
 
       # Errors object - an Array that contains error messages.
@@ -28,7 +28,7 @@ module Rankmi
 
       def initialize
         @fail_silently = true
-        @allowed_tenants = []
+        @allowed_tenants = -> { [] }
       end
 
       # Validate all required configuration attributes, fills @errors attribute if something

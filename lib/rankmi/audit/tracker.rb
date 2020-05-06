@@ -20,11 +20,11 @@ module Rankmi
       # @param [String] audit_type is the audit API url action that will be tracked.
       #   Permitted audit_type values are 'action' or 'change'.
       # @param [String] tenant is the mongoDB database name in with the audit will be saved.
-      #   Only configuration @allowed_tenants values are permitted.
+      #   Only configuration @allowed_tenants response values are permitted.
       def request_allowed?(audit_type: , tenant:)
         return error_response("Rankmi::Audit configuration is not valid: #{ configuration.error_messages }", MissingConfiguration) unless configuration.valid?
         return error_response("Unknown track type #{audit_type}", InvalidTrackType) unless %w(action change).include?(audit_type)
-        return error_response("Invalid tenant: #{ tenant }", InvalidTenant) unless configuration.allowed_tenants.include?(tenant)
+        return error_response("Invalid tenant: #{ tenant }", InvalidTenant) unless configuration.allowed_tenants.call.include?(tenant)
         true
       end
 
