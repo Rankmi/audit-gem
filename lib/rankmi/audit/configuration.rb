@@ -37,7 +37,7 @@ module Rankmi
         @errors = []
 
         @errors << 'No api_endpoint specified' if not defined?(@api_endpoint) or @api_endpoint.nil?
-        @errors << 'Invalid api_endpoint. It must be a valid URL' if not defined?(@api_endpoint) or not ( URI.parse(@api_endpoint).kind_of?(URI::HTTP) rescue false)
+        @errors << 'Invalid api_endpoint, it must be a valid URL' if not defined?(@api_endpoint) or not ( URI.parse(@api_endpoint).kind_of?(URI::HTTP) rescue false)
         @errors << 'No api_key specified' if not defined?(@api_key) or @api_key.nil?
         @errors << 'No api_secret specified' if not defined?(@api_secret) or @api_secret.nil?
 

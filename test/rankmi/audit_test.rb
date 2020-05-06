@@ -51,7 +51,7 @@ class Rankmi::AuditTest < Minitest::Test
   def test_it_must_validate_configuration_attributes
     refute ::Rankmi::Audit.configuration.valid?
     assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_endpoint specified')
-    assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('invalid api_endpoint. it must be a valid url')
+    assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('invalid api_endpoint, it must be a valid url')
     assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_key specified')
     assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_secret specified')
 
@@ -59,7 +59,7 @@ class Rankmi::AuditTest < Minitest::Test
       config.api_endpoint = 'Some invalid URL'
     end
     refute ::Rankmi::Audit.configuration.valid?
-    assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('invalid api_endpoint. it must be a valid url')
+    assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('invalid api_endpoint, it must be a valid url')
     refute ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_endpoint specified')
     assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_key specified')
     assert ::Rankmi::Audit.configuration.error_messages.downcase.include?('no api_secret specified')
@@ -89,7 +89,7 @@ class Rankmi::AuditTest < Minitest::Test
       config.fail_silently = false
     end
 
-    assert_raises StandardError do
+    assert_raises Rankmi::Audit::MissingConfiguration do
       ::Rankmi::Audit.track_action(tenant: 'some-tenant', audit_hash: {})
     end
   end
@@ -107,12 +107,56 @@ class Rankmi::AuditTest < Minitest::Test
       config.fail_silently = false
       config.allowed_tenants = ['some-valid-tenant']
     end
-    exception = assert_raises { ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-invalid-tenant') }
-    assert exception.message.include?('Invalid tenant:')
+    assert_raises Rankmi::Audit::InvalidTenant do
+      ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-invalid-tenant')
+    end
     assert ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-valid-tenant')
 
     ::Rankmi::Audit.configuration.allowed_tenants = %w(foo bar)
     assert ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'foo')
-    assert_raises { ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-valid-tenant') }
+    assert_raises Rankmi::Audit::InvalidTenant do
+      ::Rankmi::Audit.instance.tracker.request_allowed?(audit_type: 'action', tenant: 'some-valid-tenant')
+    end
   end
+
+  def test_it_must_raise_errors_or_false_whith_certain_http_status_responses
+    ::Rankmi::Audit.configure do |config|
+      config.fail_silently = false
+    end
+
+    mock_api_response_201 = Typhoeus::Response.new(code: 201)
+    mock_api_response_400 = Typhoeus::Response.new(code: 400)
+    mock_api_response_401 = Typhoeus::Response.new(code: 401)
+    mock_api_response_403 = Typhoeus::Response.new(code: 403)
+    mock_api_response_422 = Typhoeus::Response.new(code: 422)
+    mock_api_response_503 = Typhoeus::Response.new(code: 503)
+
+    assert_raises Rankmi::Audit::UnableAuditCreation do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_400)
+    end
+    assert_raises Rankmi::Audit::Unauthorized do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_401)
+    end
+    assert_raises Rankmi::Audit::MissingConfiguration do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_403)
+    end
+    assert_raises Rankmi::Audit::MissingTenant do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_422)
+    end
+    assert_raises Rankmi::Audit::UnableDatabaseConnection do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_503)
+    end
+    assert ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_201)
+
+    ::Rankmi::Audit.configure do |config|
+      config.fail_silently = true
+    end
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_400)
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_401)
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_403)
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_422)
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_503)
+    assert ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_201)
+  end
+
 end
