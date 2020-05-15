@@ -1,6 +1,7 @@
 require 'rankmi/audit/version'
 require 'rankmi/audit/errors'
 require 'rankmi/audit/configuration'
+require 'rankmi/audit/tracker_worker'
 require 'rankmi/audit/tracker'
 require 'rankmi/audit/instance'
 

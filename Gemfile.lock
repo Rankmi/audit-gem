@@ -2,24 +2,29 @@ PATH
   remote: .
   specs:
     rankmi-audit (0.1.0)
-      true
+      sidekiq (>= 5.2.7)
+      typhoeus (~> 1.1)
 
 GEM
   remote: https://rubygems.org/
   specs:
+    connection_pool (2.2.2)
+    ethon (0.12.0)
+      ffi (>= 1.3.0)
     ffi (1.11.1)
     minitest (5.11.3)
+    rack (2.0.7)
+    rack-protection (2.0.5)
+      rack
     rake (12.3.2)
-    rb-fsevent (0.10.3)
-    rb-inotify (0.10.0)
-      ffi (~> 1.0)
-    sass (3.7.4)
-      sass-listen (~> 4.0.0)
-    sass-listen (4.0.0)
-      rb-fsevent (~> 0.9, >= 0.9.4)
-      rb-inotify (~> 0.9, >= 0.9.7)
-    true (2.2.2)
-      sass (~> 3.4)
+    redis (4.1.2)
+    sidekiq (5.2.7)
+      connection_pool (~> 2.2, >= 2.2.2)
+      rack (>= 1.5.0)
+      rack-protection (>= 1.5.0)
+      redis (>= 3.3.5, < 5)
+    typhoeus (1.3.1)
+      ethon (>= 0.9.0)
 
 PLATFORMS
   ruby

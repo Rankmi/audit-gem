@@ -26,9 +26,19 @@ module Rankmi
       # Errors object - an Array that contains error messages.
       attr_reader :errors
 
+      # Boolean that defines if the tracker will be performed asynchronously with a Sidekiq worker.
+      # False by default. It's recommended to set this attribute true for production environments.
+      attr_accessor :use_sidekiq
+
+      # Defines the name of the queue that will be used when tracker_worker is performed asynchronously.
+      # By default, all track workers will be enqueued in 'tracker'.
+      attr_accessor :sidekiq_queue
+
       def initialize
         @fail_silently = true
         @allowed_tenants = -> { [] }
+        @use_sidekiq = false
+        @sidekiq_queue = :tracker
       end
 
       # Validate all required configuration attributes, fills @errors attribute if something

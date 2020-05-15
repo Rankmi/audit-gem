@@ -45,6 +45,9 @@ module Rankmi
 
       # Send a request to audit API to track a new change or action.
       #
+      # Depending on sidekiq configuration provided to the gem, this method will
+      #   enqueue the API call in a worker, or will perform the API call synchronously.
+      #
       # @param [String] audit_type define if the audit to track will be an action or a change.
       #   Allowed values are 'action' or 'change', otherwise the request will not be fired.
       # @param [String] tenant is the mongoDB database name in with the audit will be saved.
@@ -53,6 +56,16 @@ module Rankmi
       #
       # @return [Boolean|Error]
       def track(audit_type:, tenant:, audit_hash:)
+        if configuration&.use_sidekiq
+          track_later(audit_type: audit_type, tenant: tenant, audit_hash: audit_hash)
+        else
+          track_now(audit_type: audit_type, tenant: tenant, audit_hash: audit_hash)
+        end
+      end
+
+      private
+
+      def track_now(audit_type:, tenant:, audit_hash:)
         if request_allowed?(audit_type: audit_type, tenant: tenant)
           api_response = Typhoeus.post(
               "#{ configuration&.api_endpoint }/v1/#{ tenant }/#{audit_type}",
@@ -63,7 +76,21 @@ module Rankmi
         end
       end
 
-      private
+      def track_later(audit_type:, tenant:, audit_hash:)
+        if ( Sidekiq::Testing.disabled? rescue true ) and not ( Sidekiq.redis(&:info) rescue false )
+          return error_response('Unable to connect to redis. Check Sidekiq server configuration or set use_sidekiq configuration as false.', RedisConnectionRefused)
+        end
+
+        Rankmi::Audit::TrackerWorker.set(queue: configuration.sidekiq_queue).perform_async(
+            {
+                audit_type: audit_type,
+                tenant: tenant,
+                url: "#{ configuration&.api_endpoint }/v1/#{ tenant }/#{audit_type}",
+                json_encoded_headers: required_audit_api_headers.to_json,
+                json_encoded_body: audit_hash.to_json
+            }
+        )
+      end
 
       def required_audit_api_headers
         {
