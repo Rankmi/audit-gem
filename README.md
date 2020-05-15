@@ -9,7 +9,7 @@ La gema fue pensada para poder generar auditorías rápidamente desde cualquier 
 ```ruby
 # Para generar audits de acciones
 Rankmi::Audit.track_action(tenant: 'some-enterprise-token', audit_hash: { 
-    user_identifier: '',    # user.identifier desde la api de rankmi
+    user_token: '',    # user.token desde la api de rankmi
     action_type: '',        # Algún tipo de acción establecido en la api de rankmi
     action_datetime: Time.zone.now,     # Fecha en que se produjo la acción (forma parte de un unique index, para evitar duplicaciones)
     action_object: {  }  # Hash con información extra de la acción
@@ -17,8 +17,8 @@ Rankmi::Audit.track_action(tenant: 'some-enterprise-token', audit_hash: {
 
 # Para generar audits de cambios
 Rankmi::Audit.track_change(tenant: 'some-enterprise-token', audit_hash: {
-    user_identifier: '',    # user.identifier desde la api de rankmi
-    operator_user_identifier: '',   # user.identifier del usuario que realiza el cambio desde la api de rankmi
+    user_token: '',    # user.token desde la api de rankmi
+    operator_user_token: '',   # user.token del usuario que realiza el cambio desde la api de rankmi
     enterprise_process_token: '',   # enterprise_process.token desde la api de rankmi, si es que tiene un proceso asociado
     survey_token: '',       # survey.token desde la api de rankmi, si es que tiene una encuesta asociada
     change_type: '',        # Algún tipo de cambio establecido en la api de rankmi
@@ -47,9 +47,18 @@ Rankmi::Audit.configure do |config|
   config.api_endpoint = 'http://localhost:8090'   # Audit endpoint donde se dispararán los requests
   config.api_key = 'rankmiAuditTestKey'           # AUDIT_AUTH_KEY definida como variable de ambiente en la API de auditoría
   config.api_secret = 'rankmiAuditTestSecret'     # AUDIT_AUTH_SECRET definido como variable de ambiente en la API de auditoría
-  config.fail_silently = true   # Si es true, la gema no hará ningún raise Error, y sólo devolverá un boolean o nil al ejecutar un método. 
+  config.fail_silently = true   # Si es true, la gema no hará ningún raise Error, y sólo devolverá un boolean o nil al ejecutar un método. Por defecto es true.
+  config.use_sidekiq = false    # Si es true, la gema intentará encolar todos los trackings en un worker de Sidekiq definido en la misma gema. Por defecto es false.
+  config.sidekiq_queue = :tracker   # Nombre de la cola en donde serán encolados los workers de Sidekiq. Por defecto es :tracker.  
 end 
 ```
+
+> Para el uso de la integración con Sidekiq, es muy imporante que el proyecto que utilice esta gema tenga el initializer de `sidekiq.rb` con 
+> la configuración del endpoint de `redis`. De lo contrario, si al momento de hacer un tracking no se detecta la configuración de `redis`, un error será
+> arrojado, o un false será devuelto, dependiendo del valor de la configuración `fail_silently`.
+>
+> Para la configuración del `sidekiq_queue`, también se debe considerar que la cola esté definida en el archivo `sidekiq.yml` del proyecto que ejecuta
+> el servidor de Sidekiq.
 
 4. Configurar los tenants permitidos en la gema, para que sólo se puedan crear audits para empresas registradas, por ejemplo:
 ```ruby

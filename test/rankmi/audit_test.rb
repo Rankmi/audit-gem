@@ -119,7 +119,7 @@ class Rankmi::AuditTest < Minitest::Test
     end
   end
 
-  def test_it_must_raise_errors_or_false_whith_certain_http_status_responses
+  def test_it_must_raise_errors_or_false_with_certain_http_status_responses
     ::Rankmi::Audit.configure do |config|
       config.fail_silently = false
     end
@@ -157,6 +157,42 @@ class Rankmi::AuditTest < Minitest::Test
     refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_422)
     refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_503)
     assert ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_201)
+  end
+
+  def test_it_must_have_sidekiq_configuration_usage_disabled_by_default
+    refute Rankmi::Audit.configuration.use_sidekiq
+  end
+
+  def test_it_must_enqueue_when_sidekiq_configuration_is_enabled
+    ::Rankmi::Audit.configure do |config|
+      config.api_endpoint = 'http://localhost:8090'
+      config.api_key = 'SomeKey'
+      config.api_secret = 'SomeSecret'
+      config.use_sidekiq = true
+      config.allowed_tenants = -> { ['some-valid-tenant'] }
+      config.fail_silently = false
+    end
+
+    assert_equal 0, ::Rankmi::Audit::TrackerWorker.jobs.size
+    assert_equal 0, Sidekiq::Queues[::Rankmi::Audit::configuration.sidekiq_queue.to_s].size
+    ::Rankmi::Audit.track_action(tenant: 'some-valid-tenant', audit_hash: { user_token: '1234', action_type: 'test' })
+    assert_equal 1, ::Rankmi::Audit::TrackerWorker.jobs.size
+    assert_equal 1, Sidekiq::Queues[::Rankmi::Audit::configuration.sidekiq_queue.to_s].size
+
+    ::Rankmi::Audit.configure do |config|
+      config.api_endpoint = 'http://localhost:8090'
+      config.api_key = 'SomeKey'
+      config.api_secret = 'SomeSecret'
+      config.use_sidekiq = true
+      config.sidekiq_queue = :audits
+      config.allowed_tenants = -> { ['some-valid-tenant'] }
+    end
+
+    assert_equal 0, Sidekiq::Queues[::Rankmi::Audit::configuration.sidekiq_queue.to_s].size
+    assert_equal 1, Sidekiq::Queues['tracker'].size
+    ::Rankmi::Audit.track_action(tenant: 'some-valid-tenant', audit_hash: { user_token: '1234', action_type: 'test' })
+    assert_equal 1, Sidekiq::Queues[::Rankmi::Audit::configuration.sidekiq_queue.to_s].size
+    assert_equal 1, Sidekiq::Queues['tracker'].size
   end
 
 end
