@@ -1,5 +1,6 @@
 module Rankmi
   module Audit
+    class ConnectionRefused < StandardError; end
     class InvalidTenant < StandardError; end
     class InvalidTrackType < StandardError; end
     class MissingConfiguration < StandardError; end

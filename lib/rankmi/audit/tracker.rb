@@ -35,6 +35,7 @@ module Rankmi
       #
       # @param [Typhoeus::Response] typhoeus_response returned by Rankmi audit API
       def validate_api_response_code(typhoeus_response)
+        return error_response('Could not get any response from Rankmi audits api', ConnectionRefused) if typhoeus_response.code == 0
         return error_response('An error ocurred in Rankmi audits api that prevents the audit to be created', UnableAuditCreation) if typhoeus_response.code == 400
         return error_response('Rankmi::Audit api_key and/or api_secret provided are not valid', Unauthorized) if typhoeus_response.code == 401
         return error_response('No authorization headers provided', MissingConfiguration) if typhoeus_response.code == 403

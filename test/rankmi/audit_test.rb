@@ -124,6 +124,7 @@ class Rankmi::AuditTest < Minitest::Test
       config.fail_silently = false
     end
 
+    mock_api_response_0 = Typhoeus::Response.new(code: 0)
     mock_api_response_201 = Typhoeus::Response.new(code: 201)
     mock_api_response_400 = Typhoeus::Response.new(code: 400)
     mock_api_response_401 = Typhoeus::Response.new(code: 401)
@@ -131,6 +132,9 @@ class Rankmi::AuditTest < Minitest::Test
     mock_api_response_422 = Typhoeus::Response.new(code: 422)
     mock_api_response_503 = Typhoeus::Response.new(code: 503)
 
+    assert_raises Rankmi::Audit::ConnectionRefused do
+      ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_0)
+    end
     assert_raises Rankmi::Audit::UnableAuditCreation do
       ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_400)
     end
@@ -151,6 +155,7 @@ class Rankmi::AuditTest < Minitest::Test
     ::Rankmi::Audit.configure do |config|
       config.fail_silently = true
     end
+    refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_0)
     refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_400)
     refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_401)
     refute ::Rankmi::Audit.instance.tracker.validate_api_response_code(mock_api_response_403)
